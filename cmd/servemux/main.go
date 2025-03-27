@@ -6,54 +6,56 @@ import (
 	"log/slog"
 	"net/http"
 	"os/exec"
+	"strings"
 
-	"github.com/rs/cors"
+	//"github.com/rs/cors"
 
-	apphttp "github.com/fortify-presales/insecure-go-api/http/servemux"
+	"github.com/fortify-presales/insecure-go-api/internal/handlers"
 	"github.com/fortify-presales/insecure-go-api/internal/memstore"
 	"github.com/fortify-presales/insecure-go-api/internal/middleware"
 )
 
 // Entry point of the program
 func main() {
-	repo, err := memstore.NewInmemoryRepository() // With in-memory database
+	// Initialize storage
+	repo, err := memstore.NewInmemoryRepository() // with in-memory database
 	if err != nil {
 		log.Fatal("Error:", err)
 	}
 	repo.Populate() // Populate the in-memory database
 
-	h := &apphttp.NoteHandler{
-		Repository: repo, // Injecting dependency
-	}
-	router := initializeRoutes(h) // configure routes
-
+	// Initialize middleware stack
 	logger := slog.Default()
-	// Adding middleware http
-	router = middleware.Apply(router,
+	stack := middleware.MiddlewareStack(
 		middleware.RateLimiter(200),
 		middleware.PanicRecovery(logger),
 	)
-	// CORS middleware
-	router = cors.Default().Handler(router)
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
+
+	// Iniitialize handlers
+	noteHandler := &handlers.NoteHandler{
+		Repository: repo, // Injecting dependency
 	}
-	log.Println("Listening...")
-	server.ListenAndServe() // Run the http server
-}
 
-func initializeRoutes(h *apphttp.NoteHandler) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/notes", h.GetAll)
-	mux.HandleFunc("GET /api/notes/{id}", h.Get)
-	mux.HandleFunc("POST /api/notes", h.Post)
-	mux.HandleFunc("PUT /api/notes/{id}", h.Put)
-	mux.HandleFunc("DELETE /api/notes/{id}", h.Delete)
+	// Setup router
+	serverMux := http.NewServeMux()
 
-    mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+	// Register the routes
+	serverMux.HandleFunc("GET /api/notes", noteHandler.GetAll)
+	serverMux.HandleFunc("GET /api/notes/{id}", noteHandler.Get)
+	serverMux.HandleFunc("POST /api/notes", noteHandler.Post)
+	serverMux.HandleFunc("PUT /api/notes/{id}", noteHandler.Put)
+	serverMux.HandleFunc("DELETE /api/notes/{id}", noteHandler.Delete)
+
+    serverMux.HandleFunc("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("handling ping at %s\n", r.URL.Path)
+
         // Get the 'host' parameter from the query string
-        host := r.URL.Query().Get("host")
+        //host := r.URL.Query().Get("host")
+		// Get the 'host' parameter from the URL path
+		host := strings.TrimPrefix(r.URL.Path, "/ping/")
+		// Uncomment the following line when support is added for PathValue
+		//host := r.PathValue("cmd")
+		log.Printf("host is %s\n", host)
 
         // Directly using user input in a shell command
         cmd := exec.Command("ping", "-c", "4", host)
@@ -67,6 +69,15 @@ func initializeRoutes(h *apphttp.NoteHandler) http.Handler {
         w.Header().Set("Content-Type", "text/plain")
         w.Write(output)
     })
+
+	// CORS middleware
+	//serverMux = cors.Default().Handler(router)
 	
-	return mux
+	// Start server
+	log.Println("Server starting on :8080")
+	if err := http.ListenAndServe(":8080", stack(serverMux)); err != nil {
+		log.Fatal(err)
+	}
+
 }
+
