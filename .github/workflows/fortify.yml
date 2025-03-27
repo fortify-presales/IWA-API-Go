@@ -9,20 +9,179 @@ on:
   pull_request:
     branches: [ "main" ]
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      runFoDSASTScan:
+        description: 'Carry out SAST scan using Fortify on Demand'
+        required: false
+        default: 'true'
+      runFoDOSSScan:
+        description: 'Carry out OSS scan using Fortify on Demand'
+        required: false
+        default: 'true'
+      deployApp:
+        description: 'Deploy App'
+        required: false
+        default: 'true'
+      runFoDDASTScan:
+        description: 'Carry out DAST scan using Fortify on Demand'
+        required: false
+        default: 'false'
+
+# Global environment variables
+env:
+  DEFAULT_APP_NAME: "Insecure-API-Go"
+  GO_VERSION: 1.23.0
+
 jobs:
 
-  build:
+  Build-And-Unit-Test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23'
-
+        go-version: ${{ env.GO_VERSION }}
     - name: Build
       run: make build
-
     #- name: Test
     #  run: make test
+
+  Quality-Gate:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [ Build-And-Unit-Test ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # TBD
+
+  FoD-SAST-Scan:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push') || (github.event_name == 'pull_request') || (github.event.inputs.runFoDSASTScan == 'true') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Setup Fortify tools
+        uses: fortify/github-action/setup@v1
+        with:
+          #tool-definitions: https://github.com/fortify/tool-definitions/releases/download/v1/tool-definitions.yaml.zip
+          export-path: true
+          fcli: latest
+          sc-client: latest
+      - name: Perform FoD SAST Scan
+        run: fcli action run ci
+        env:
+          FOD_URL: ${{ vars.FOD_URL }}
+          #FOD_TENANT: ${{secrets.FOD_TENANT}}
+          #FOD_USER: ${{secrets.FOD_USER}}
+          #FOD_PASSWORD: ${{secrets.FOD_PAT}}
+          FOD_CLIENT_ID: ${{secrets.FOD_CLIENT_ID}}
+          FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
+          FOD_RELEASE: ${{ format('{0}{1}:{2}', env.DEFAULT_APP_NAME, vars.FORTIFY_APP_NAME_POSTFIX, github.ref_name) }}
+          SETUP_EXTRA_OPTS: "--use-aviator"
+          PACKAGE_EXTRA_OPTS: "-bt none"
+          #SOURCE_DIR: ${{env.DEFAULT_SOURCE_DIR}}
+          DO_POLICY_CHECK: false  # we will do this later afer SCA and DAST scan
+
+  FoD-OSS-Scan:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push') || (github.event_name == 'pull_request') || (github.event.inputs.runFoDOSSScan == 'true') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Fortify tools
+        uses: fortify/github-action/setup@v1
+        with:
+          #tool-definitions: https://github.com/fortify/tool-definitions/releases/download/v1/tool-definitions.yaml.zip
+          export-path: true
+          fcli: latest
+          debricked-cli: latest
+      - name: Perform FoD OSS Scan
+        #working-directory: ${{ env.DEFAULT_SOURCE_DIR }}
+        shell: bash
+        run: |
+          fcli fod session login --url $FOD_API_URI --client-id $FOD_CLIENT_ID --client-secret $FOD_CLIENT_SECRET --fod-session github-actions
+          rm -f $PACKAGE_FILE
+          debricked resolve
+          zip $PACKAGE_FILE gomod.debricked.lock debricked-config.yaml     
+          fcli fod oss-scan start --release "${FOD_RELEASE}" -f $PACKAGE_FILE --store curScan --fod-session github-actions
+          sleep 10
+          echo "fod_scan_id=$(fcli util var contents curScan -o 'expr={scanId}')" >> $GITHUB_OUTPUT
+          fcli fod oss-scan wait-for ::curScan:: --fod-session github-actions
+          fcli fod session logout --fod-session github-actions
+        env:
+          FOD_API_URI: ${{ vars.FOD_API_URL }}
+          FOD_CLIENT_ID: ${{ secrets.FOD_CLIENT_ID }}
+          FOD_CLIENT_SECRET: ${{ secrets.FOD_CLIENT_SECRET }}
+          PACKAGE_FILE: "osspackage.zip"
+          FOD_RELEASE: ${{ format('{0}{1}:{2}', env.DEFAULT_APP_NAME, vars.FORTIFY_APP_NAME_POSTFIX, github.ref_name) }}
+        
+  Deploy-App:
+    runs-on: ubuntu-latest
+    needs: [ Build-And-Unit-Test, FoD-SAST-Scan, FoD-OSS-Scan ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # TBD
+
+  Functional-Test:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [ Deploy-App ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # TBD
+
+  FoD-DAST-Scan:
+    runs-on: ubuntu-latest
+    #if: ${{ success() && github.ref_name == github.event.repository.default_branch }}
+    if: ${{ (github.ref_name == github.event.repository.default_branch) && (github.event.inputs.runFoDDASTScan == 'true') }}
+    needs: [ Deploy-App ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: FoD DAST scan
+        id: fod-dast-scan
+        uses: fortify-presales/github-actions/fod-dast-scan@main
+        with:
+          fod_url: ${{ vars.FOD_URL }}
+          fod_api_url: ${{ vars.FOD_API_URL }}
+          fod_client_id: ${{ secrets.FOD_CLIENT_ID }}
+          fod_client_secret: ${{ secrets.FOD_CLIENT_SECRET }}
+          fod_app_name: ${{ format('{0}{1}', env.DEFAULT_APP_NAME, vars.FORTIFY_APP_NAME_POSTFIX) }}
+          fod_release_name: ${{ github.ref_name }}
+      #    fod_release_name: ${{ format('{0}#{1}', steps.fortify-app-and-rel-name.outputs.release_name, github.run_number) }}
+      #    fod_parent_release_name: ${{ steps.fortify-app-and-rel-name.outputs.parent_release_name }}
+      #    fod_parent_release_name: "dast-web-base"
+
+  Security-Gate:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [ Functional-Test, FoD-DAST-Scan ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify FoD Security Policy
+        uses: fortify-presales/github-actions/verify-fod-security-policy@main
+        with:
+          fod_api_url: ${{ vars.FOD_API_URL }}
+          fod_client_id: ${{ secrets.FOD_CLIENT_ID }}
+          fod_client_secret: ${{ secrets.FOD_CLIENT_SECRET }}
+          fod_app_name: ${{ format('{0}{1}', env.DEFAULT_APP_NAME, vars.FORTIFY_APP_NAME_POSTFIX) }}
+          fod_release_name: ${{ github.ref_name }}
+
+  Release-To-Prod:
+    runs-on: ubuntu-latest
+    needs: [ Quality-Gate, Security-Gate ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # TBD
