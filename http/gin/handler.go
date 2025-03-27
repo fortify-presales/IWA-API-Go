@@ -2,10 +2,11 @@ package gin
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 
-	"github.com/fortify-presales/IWA-API-Go/model"
+	"github.com/gin-gonic/gin"
+
+	"github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 type NoteHandler struct {

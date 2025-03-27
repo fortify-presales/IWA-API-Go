@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
+	"os/exec"
 
 	"github.com/rs/cors"
 
-	apphttp "github.com/fortify-presales/IWA-API-Go/http/servemux"
-	"github.com/fortify-presales/IWA-API-Go/memstore"
-	"github.com/fortify-presales/IWA-API-Go/middleware"
+	apphttp "github.com/fortify-presales/insecure-go-api/http/servemux"
+	"github.com/fortify-presales/insecure-go-api/internal/memstore"
+	"github.com/fortify-presales/insecure-go-api/internal/middleware"
 )
 
 // Entry point of the program
@@ -18,6 +20,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Error:", err)
 	}
+	repo.Populate() // Populate the in-memory database
+
 	h := &apphttp.NoteHandler{
 		Repository: repo, // Injecting dependency
 	}
@@ -46,5 +50,23 @@ func initializeRoutes(h *apphttp.NoteHandler) http.Handler {
 	mux.HandleFunc("POST /api/notes", h.Post)
 	mux.HandleFunc("PUT /api/notes/{id}", h.Put)
 	mux.HandleFunc("DELETE /api/notes/{id}", h.Delete)
+
+    mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+        // Get the 'host' parameter from the query string
+        host := r.URL.Query().Get("host")
+
+        // Directly using user input in a shell command
+        cmd := exec.Command("ping", "-c", "4", host)
+        output, err := cmd.CombinedOutput()
+        if err != nil {
+            http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
+            return
+        }
+
+        // Return the command output to the user
+        w.Header().Set("Content-Type", "text/plain")
+        w.Write(output)
+    })
+	
 	return mux
 }

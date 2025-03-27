@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//go:generate mockgen -destination=../mocks/mock_repository.go -package=mocks github.com/fortify-presales/IWA-API-Go/model Repository
+//go:generate mockgen -destination=../mocks/mock_repository.go -package=mocks github.com/fortify-presales/insecure-go-api/model Repository
 
 var (
 	ErrNotFound            = errors.New("no records found")
@@ -22,6 +22,7 @@ type Note struct {
 
 // CRUD interface
 type Repository interface {
+	Populate()
 	Create(Note) (string, error)
 	Update(string, Note) error
 	Delete(string) error

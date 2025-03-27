@@ -8,7 +8,7 @@ import (
 	// external
 	"github.com/gofrs/uuid"
 
-	"github.com/fortify-presales/IWA-API-Go/model"
+	"github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 // inmemoryRepository provides concrete implementation for repository interface
@@ -20,6 +20,23 @@ func NewInmemoryRepository() (model.Repository, error) {
 	return &inmemoryRepository{
 		noteStore: make(map[string]model.Note),
 	}, nil
+}
+
+func (i *inmemoryRepository) Populate() {
+	note1 := model.Note{
+		NoteID:      "1",
+		Title:       "slog",
+		Description: "slog is a logging package",
+		CreatedOn:   time.Now(),
+	}
+	note2 := model.Note{
+		NoteID:      "2",
+		Title:       "viper",
+		Description: "viper is a configuration management package",
+		CreatedOn:   time.Now(),
+	}
+	i.Create(note1)
+	i.Create(note2)
 }
 
 func (i *inmemoryRepository) isNoteTitleExists(title string) bool {

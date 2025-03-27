@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	model "github.com/fortify-presales/insecure-go-api/internal/models"
 	"github.com/labstack/echo/v4"
-	"github.com/fortify-presales/IWA-API-Go/model"
 )
 
 type NoteHandler struct {

@@ -6,7 +6,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/fortify-presales/IWA-API-Go/model"
+	"github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 func TestNoteRepository_CreateValidNote(t *testing.T) {

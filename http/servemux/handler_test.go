@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	"github.com/fortify-presales/IWA-API-Go/mocks"
-	"github.com/fortify-presales/IWA-API-Go/model"
+	"github.com/fortify-presales/insecure-go-api/internal/mocks"
+	model "github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 var (

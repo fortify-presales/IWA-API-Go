@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/fortify-presales/IWA-API-Go/model"
+	"github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 // NoteHandler organizes HTTP handler functions for CRUD on Note entity

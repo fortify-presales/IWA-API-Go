@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
+	"os/exec"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	apphttp "github.com/fortify-presales/IWA-API-Go/http/echo"
-	"github.com/fortify-presales/IWA-API-Go/memstore"
+	apphttp "github.com/fortify-presales/insecure-go-api/http/echo"
+	"github.com/fortify-presales/insecure-go-api/internal/memstore"
 )
 
 func main() {
@@ -29,6 +32,21 @@ func main() {
 	e.POST("/api/notes", h.Post)
 	e.PUT("/api/notes/:id", h.Put)
 	e.DELETE("/api/notes/:id", h.Delete)
+	e.GET("/ping", func(c echo.Context) error {
+		 // Get the 'host' parameter from the query string
+		 r := c.Request()
+		 host := r.URL.Query().Get("host")
+
+		 // Directly using user input in a shell command
+		 cmd := exec.Command("ping", "-c", "4", host)
+		 output, err := cmd.CombinedOutput()
+		 if err != nil {
+			 return c.String(http.StatusInternalServerError, fmt.Sprintf("Error: %s", err))
+		 }
+ 
+		 // Return the command output to the user
+		 return c.HTMLBlob(http.StatusOK, output)
+	})
 	// Start server
 	e.Logger.Fatal(e.Start(":3000"))
 }

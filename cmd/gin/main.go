@@ -2,11 +2,10 @@ package main
 
 import (
 	"log"
-
 	"github.com/gin-gonic/gin"
 
-	apphttp "github.com/fortify-presales/IWA-API-Go/http/gin"
-	"github.com/fortify-presales/IWA-API-Go/memstore"
+	apphttp "github.com/fortify-presales/insecure-go-api/http/gin"
+	"github.com/fortify-presales/insecure-go-api/internal/memstore"
 )
 
 func main() {
@@ -24,5 +23,6 @@ func main() {
 	router.POST("/api/notes", h.Post)
 	//router.PUT("/api/notes/:id", h.Put)
 	//router.DELETE("/api/notes/:id", h.Delete)
+
 	router.Run("localhost:8080")
 }
