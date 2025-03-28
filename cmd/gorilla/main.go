@@ -1,74 +1,91 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
 	"fmt"
-	"log"
-	"log/slog"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/rs/cors"
 	"github.com/gorilla/mux"
 
-	apphttp "github.com/fortify-presales/insecure-go-api/http/gorilla"
-	"github.com/fortify-presales/insecure-go-api/internal/memstore"
-	"github.com/fortify-presales/insecure-go-api/internal/middleware"
+	"github.com/fortify-presales/insecure-go-api/pkg/log"
+
+	"github.com/fortify-presales/insecure-go-api/internal/config"
 )
+
+// Version indicates the current version of the application.
+var Version = "1.0.0"
+
+var flagConfig = flag.String("config", "./config/local.yml", "path to the config file")
 
 // Entry point of the program
 func main() {
-	repo, err := memstore.NewInmemoryRepository() // With in-memory database
+	// Parse command line flags
+	flag.Parse()
+	// Create root logger tagged with server version
+	logger := log.New().With(nil, "version", Version)
+	// Load application configurations
+	cfg, err := config.Load(*flagConfig, logger)
 	if err != nil {
-		log.Fatal("Error:", err)
+		logger.Errorf("failed to load application configuration: %s", err)
+		os.Exit(-1)
 	}
-	repo.Populate() // Populate the in-memory database
-
-	h := &apphttp.NoteHandler{
-		Repository: repo, // Injecting dependency
+	// Build HTTP server
+	address := fmt.Sprintf(":%v", cfg.ServerPort)
+	srv := &http.Server{
+		Addr:    address,
+		Handler: buildHandler(logger, cfg),
+		ReadTimeout:  15 * time.Second,
+        WriteTimeout: 15 * time.Second,
 	}
-	router := initializeRoutes(h) // configure routes
-
-	logger := slog.Default()
-	// Adding middleware http
-	router = middleware.Apply(router,
-		middleware.RateLimiter(200),
-		middleware.PanicRecovery(logger),
-	)
-	// CORS middleware
-	router = cors.Default().Handler(router)
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
+	// Start the server in a separate Goroutine.
+	go func() {
+		logger.Infof("Starting the server on :%d", cfg.ServerPort)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Errorf("Failed to start server: %s", err)
+			os.Exit(-1)
+		}
+	}()
+	// Implement graceful shutdown.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logger.Infof("Shutting down the server...")
+	// Set a timeout for shutdown (for example, 5 seconds).
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Shutdown the server gracefully.
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Errorf("Server shutdown error: %v", err)
 	}
-	log.Println("Listening...")
-	server.ListenAndServe() // Run the http server
+	logger.Infof("Server gracefully stopped")
 }
 
-func initializeRoutes(h *apphttp.NoteHandler) http.Handler {
-	mux := mux.NewRouter()
-	mux.HandleFunc("/api/notes", h.GetAll).Methods("GET")
-	mux.HandleFunc("/api/notes/{id}", h.Get).Methods(("GET"))
-	mux.HandleFunc("/api/notes", h.Post).Methods("POST")
-	mux.HandleFunc("/api/notes/{id}", h.Put).Methods("PUT")
-	mux.HandleFunc("/api/notes/{id}", h.Delete).Methods("DELETE")
+// buildHandler sets up the HTTP routing and builds an HTTP handler.
+func buildHandler(logger log.Logger, cfg *config.Config) http.Handler {
+	router := mux.NewRouter()
 
-    mux.HandleFunc("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
-        // Get the 'host' parameter from the query string
-        //host := r.URL.Query().Get("host")
+	router.HandleFunc("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
+		logger.Debugf("Received request: %s", r.URL.Path)
+		//
+		// gorilla mux.Vars - Not yet supported by Fortify
+		//
 		host := mux.Vars(r)["cmd"]
+		cmd := exec.Command("ping", "-c", "4", host)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write(output)
+	})
 
-        // Directly using user input in a shell command
-        cmd := exec.Command("ping", "-c", "4", host)
-        output, err := cmd.CombinedOutput()
-        if err != nil {
-            http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
-            return
-        }
-
-        // Return the command output to the user
-        w.Header().Set("Content-Type", "text/plain")
-        w.Write(output)
-    })
-	
-	return mux
+	return router
 }
