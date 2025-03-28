@@ -75,6 +75,8 @@ jobs:
           export-path: true
           fcli: latest
           sc-client: latest
+      - name: Create FoD Upload Package
+        run: zip -qr fortifypackage.zip $(ls -d */) docker-compose.yaml go.mod Makefile
       - name: Perform FoD SAST Scan
         run: fcli action run ci
         env:
@@ -86,7 +88,7 @@ jobs:
           FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
           FOD_RELEASE: ${{ format('{0}{1}:{2}', env.DEFAULT_APP_NAME, vars.FORTIFY_APP_NAME_POSTFIX, github.ref_name) }}
           SETUP_EXTRA_OPTS: "--use-aviator"
-          PACKAGE_EXTRA_OPTS: "-bt none"
+          USE_PACKAGE: fortifypackage.zip
           #SOURCE_DIR: ${{env.DEFAULT_SOURCE_DIR}}
           DO_POLICY_CHECK: false  # we will do this later afer SCA and DAST scan
 
