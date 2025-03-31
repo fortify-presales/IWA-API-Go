@@ -9,19 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/rs/cors"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/fortify-presales/insecure-go-api/pkg/log"
 
 	"github.com/fortify-presales/insecure-go-api/internal/config"
-	"github.com/fortify-presales/insecure-go-api/internal/handlers"
-	"github.com/fortify-presales/insecure-go-api/internal/memstore"
-	"github.com/fortify-presales/insecure-go-api/internal/middleware"
-	model "github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 // Version indicates the current version of the application.
@@ -42,28 +37,13 @@ func main() {
 		logger.Errorf("failed to load application configuration: %s", err)
 		os.Exit(-1)
 	}
-	// Initialize storage
-	repo, err := memstore.NewInmemoryRepository() // with in-memory database
-	if err != nil {
-		logger.Error("Error:", err)
-		os.Exit(-1)
-	}
-	repo.Populate() // Populate the in-memory database
-
-	// Initialize middleware stack
-	stack := middleware.MiddlewareStack(
-		middleware.RateLimiter(200),
-		middleware.PanicRecovery(logger),
-	)
-	// Initialize CORS
-	serverMux := cors.Default().Handler(buildHandler(logger, cfg, repo))
 	// Build HTTP server
 	address := fmt.Sprintf(":%v", cfg.ServerPort)
 	srv := &http.Server{
-		Addr:         address,
-		Handler:      stack(serverMux),
+		Addr:    address,
+		Handler: buildHandler(logger, cfg),
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+        WriteTimeout: 15 * time.Second,
 	}
 	// Start the server in a separate Goroutine.
 	go func() {
@@ -86,42 +66,24 @@ func main() {
 		logger.Errorf("Server shutdown error: %v", err)
 	}
 	logger.Infof("Server gracefully stopped")
-
 }
 
 // buildHandler sets up the HTTP routing and builds an HTTP handler.
-func buildHandler(logger log.Logger, cfg *config.Config, repo model.Repository) http.Handler {
-	router := http.NewServeMux()
+func buildHandler(logger log.Logger, cfg *config.Config) http.Handler {
+	router := chi.NewRouter()
 
-	// Iniitialize handlers
-	noteHandler := &handlers.NoteHandler{
-		Repository: repo, // Injecting dependency
-	}
-
-	router.HandleFunc("GET /api/notes", noteHandler.GetAll)
-	router.HandleFunc("GET /api/notes/{id}", noteHandler.Get)
-	router.HandleFunc("POST /api/notes", noteHandler.Post)
-	router.HandleFunc("PUT /api/notes/{id}", noteHandler.Put)
-	router.HandleFunc("DELETE /api/notes/{id}", noteHandler.Delete)
-
-	router.HandleFunc("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
-		logger.Debugf("handling ping at %s\n", r.URL.Path)
-
+	router.Get("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
+		logger.Debugf("Received request: %s", r.URL.Path)
 		//
-		// servmux r.PathValue - Not yet supported by Fortify
+		// gorilla mux.Vars - Not yet supported by Fortify
 		//
-		//host := r.PathValue("cmd")
-		//
-		// instead we use following
-		host := strings.TrimPrefix(r.URL.Path, "/ping/")
-		// Directly using user input in a shell command
+		host := chi.URLParam(r, "cmd")
 		cmd := exec.Command("ping", "-c", "4", host)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error: %s", err), http.StatusInternalServerError)
 			return
 		}
-		// Return the command output to the user
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write(output)
 	})

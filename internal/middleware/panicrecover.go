@@ -2,11 +2,12 @@ package middleware
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
+
+	"github.com/fortify-presales/insecure-go-api/pkg/log"
 )
 
-func PanicRecovery(logger *slog.Logger) Middleware {
+func PanicRecovery(logger log.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

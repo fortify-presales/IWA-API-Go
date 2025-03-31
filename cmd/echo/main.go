@@ -1,52 +1,90 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 
-	apphttp "github.com/fortify-presales/insecure-go-api/http/echo"
-	"github.com/fortify-presales/insecure-go-api/internal/memstore"
+	"github.com/fortify-presales/insecure-go-api/pkg/log"
+
+	"github.com/fortify-presales/insecure-go-api/internal/config"
 )
 
-func main() {
-	repo, err := memstore.NewInmemoryRepository() // With in-memory database
-	if err != nil {
-		log.Fatal("Error:", err)
-	}
-	h := &apphttp.NoteHandler{
-		Repository: repo, // Injecting dependency
-	}
-	e := echo.New()
-	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
-	// Routes
-	e.GET("/api/notes", h.GetAll)
-	e.GET("/api/notes/:id", h.Get)
-	e.POST("/api/notes", h.Post)
-	e.PUT("/api/notes/:id", h.Put)
-	e.DELETE("/api/notes/:id", h.Delete)
-	e.GET("/ping", func(c echo.Context) error {
-		 // Get the 'host' parameter from the query string
-		 r := c.Request()
-		 host := r.URL.Query().Get("host")
+// Version indicates the current version of the application.
+var Version = "1.0.0"
 
-		 // Directly using user input in a shell command
-		 cmd := exec.Command("ping", "-c", "4", host)
-		 output, err := cmd.CombinedOutput()
-		 if err != nil {
-			 return c.String(http.StatusInternalServerError, fmt.Sprintf("Error: %s", err))
-		 }
- 
-		 // Return the command output to the user
-		 return c.HTMLBlob(http.StatusOK, output)
+// Read configuration file path from command line argument, default is "./config/local.yml"
+var flagConfig = flag.String("config", "./config/local.yml", "path to the config file")
+
+// Entry point of the program
+func main() {
+	// Parse command line flags
+	flag.Parse()
+	// Create root logger tagged with server version
+	logger := log.New().With(nil, "version", Version)
+	// Load application configurations
+	cfg, err := config.Load(*flagConfig, logger)
+	if err != nil {
+		logger.Errorf("failed to load application configuration: %s", err)
+		os.Exit(-1)
+	}
+	// Build HTTP server
+	address := fmt.Sprintf(":%v", cfg.ServerPort)
+	srv := &http.Server{
+		Addr:         address,
+		Handler:      buildHandler(logger, cfg),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+	}
+	// Start the server in a separate Goroutine.
+	go func() {
+		logger.Infof("Starting the server on :%d", cfg.ServerPort)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Errorf("Failed to start server: %s", err)
+			os.Exit(-1)
+		}
+	}()
+	// Implement graceful shutdown.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	logger.Infof("Shutting down the server...")
+	// Set a timeout for shutdown (for example, 5 seconds).
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Shutdown the server gracefully.
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Errorf("Server shutdown error: %v", err)
+	}
+	logger.Infof("Server gracefully stopped")
+}
+
+// buildHandler sets up the HTTP routing and builds an HTTP handler.
+func buildHandler(logger log.Logger, cfg *config.Config) http.Handler {
+	router := echo.New()
+
+	router.GET("/ping/:cmd", func(c echo.Context) error {
+		logger.Debugf("Received request: %s", c.Request().URL.Path)
+		//
+		// echo c.Param - Not yet supported by Fortify
+		//
+		host := c.Param("cmd")
+		cmd := exec.Command("ping", "-c", "4", host)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return c.HTML(http.StatusInternalServerError, fmt.Sprintf("<pre>Error: %s</pre>", err))
+		}
+		return c.HTML(http.StatusOK, fmt.Sprintf("<pre>%s</pre>", output))
 	})
-	// Start server
-	e.Logger.Fatal(e.Start(":3000"))
+
+	return router
 }

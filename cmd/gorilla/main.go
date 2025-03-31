@@ -22,6 +22,7 @@ import (
 // Version indicates the current version of the application.
 var Version = "1.0.0"
 
+// Read configuration file path from command line argument, default is "./config/local.yml"
 var flagConfig = flag.String("config", "./config/local.yml", "path to the config file")
 
 // Entry point of the program
