@@ -9,19 +9,17 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/rs/cors"
 
-	"github.com/fortify-presales/insecure-go-api/pkg/log"
-
+	"github.com/fortify-presales/insecure-go-api/api/notes"
 	"github.com/fortify-presales/insecure-go-api/internal/config"
-	"github.com/fortify-presales/insecure-go-api/internal/handlers"
 	"github.com/fortify-presales/insecure-go-api/internal/memstore"
 	"github.com/fortify-presales/insecure-go-api/internal/middleware"
 	model "github.com/fortify-presales/insecure-go-api/internal/models"
+	"github.com/fortify-presales/insecure-go-api/pkg/log"
 )
 
 // Version indicates the current version of the application.
@@ -30,7 +28,6 @@ var Version = "1.0.0"
 // Read configuration file path from command line argument, default is "./config/local.yml"
 var flagConfig = flag.String("config", "./config/local.yml", "path to the config file")
 
-// Entry point of the program
 func main() {
 	// Parse command line flags
 	flag.Parse()
@@ -93,27 +90,19 @@ func main() {
 func buildHandler(logger log.Logger, cfg *config.Config, repo model.Repository) http.Handler {
 	router := http.NewServeMux()
 
-	// Iniitialize handlers
-	noteHandler := &handlers.NoteHandler{
-		Repository: repo, // Injecting dependency
-	}
+	notesHandler := notes.MakeHTTPHandler(repo)
+	router.Handle("/api/v1/notes", notesHandler)
+	router.Handle("/api/v1/notes/", notesHandler)
 
-	router.HandleFunc("GET /api/notes", noteHandler.GetAll)
-	router.HandleFunc("GET /api/notes/{id}", noteHandler.Get)
-	router.HandleFunc("POST /api/notes", noteHandler.Post)
-	router.HandleFunc("PUT /api/notes/{id}", noteHandler.Put)
-	router.HandleFunc("DELETE /api/notes/{id}", noteHandler.Delete)
-
-	router.HandleFunc("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/v1/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("handling ping at %s\n", r.URL.Path)
-
 		//
-		// servmux r.PathValue - Not yet supported by Fortify
+		// servemux r.PathValue - Not yet supported by Fortify without custom rules
 		//
-		//host := r.PathValue("cmd")
+		host := r.PathValue("cmd")
 		//
 		// instead we use following
-		host := strings.TrimPrefix(r.URL.Path, "/ping/")
+		//host := strings.TrimPrefix(r.URL.Path, "/api/v1/ping/")
 		// Directly using user input in a shell command
 		cmd := exec.Command("ping", "-c", "4", host)
 		output, err := cmd.CombinedOutput()

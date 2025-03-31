@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/fortify-presales/insecure-go-api/internal/models"
+	model "github.com/fortify-presales/insecure-go-api/internal/models"
 )
 
 // NoteHandler organizes HTTP handler functions for CRUD on Note entity
@@ -13,7 +13,7 @@ type NoteHandler struct {
 	Repository model.Repository // interface for persistence
 }
 
-// Post handles HTTP Post - /api/notes
+// Post handles HTTP Post - /api/v1/notes
 func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var note model.Note
 	// Decode the incoming note json
@@ -35,7 +35,7 @@ func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// GetAll handles HTTP Get - /api/notes
+// GetAll handles HTTP Get - /api/v1/notes
 func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	// Get all
 	if notes, err := h.Repository.GetAll(); err != nil {
@@ -57,7 +57,7 @@ func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Get handles HTTP Get - /api/notes/{id}
+// Get handles HTTP Get - /api/v1/notes/{id}
 func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")
@@ -80,7 +80,7 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Put handles HTTP Put - /api/notes/{id}
+// Put handles HTTP Put - /api/v1/notes/{id}
 func (h *NoteHandler) Put(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")
@@ -99,7 +99,7 @@ func (h *NoteHandler) Put(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Delete handles HTTP Delete - /api/notes/{id}
+// Delete handles HTTP Delete - /api/v1/notes/{id}
 func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")

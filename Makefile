@@ -108,11 +108,16 @@ migrate-reset: ## reset database and re-run all migrations
 	@echo "Running all database migrations..."
 	@$(MIGRATE) up
 
+.PHONY: swagger
+swagger: ## generate swagger documentation
+	@echo "Generating swagger documentation..."
+	@swag init -g cmd/server/main.go -o ./docs
+
 .PHONY: sast-scan
 sast-scan: ## run static application security testing
 ##	gosec -exclude=G104 ./...
 	@echo "Running static application security testing..."
 	@sourceanalyzer "-Dcom.fortify.sca.ProjectRoot=.fortify" -b "insecure-go-api" -clean
 	@sourceanalyzer "-Dcom.fortify.sca.ProjectRoot=.fortify" -b "insecure-go-api" -exclude vendor "**/*.go" -verbose -debug
-	@sourceanalyzer "-Dcom.fortify.sca.ProjectRoot=.fortify" -b "insecure-go-api" -verbose -debug -scan
+	@sourceanalyzer "-Dcom.fortify.sca.ProjectRoot=.fortify" -b "insecure-go-api" -verbose -debug -scan -rules etc/sast-custom-rules/example-custom-rules.xml 
 

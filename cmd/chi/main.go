@@ -75,7 +75,7 @@ func buildHandler(logger log.Logger, cfg *config.Config) http.Handler {
 	router.Get("/ping/{cmd}", func(w http.ResponseWriter, r *http.Request) {
 		logger.Debugf("Received request: %s", r.URL.Path)
 		//
-		// gorilla mux.Vars - Not yet supported by Fortify
+		// chi URLParam - Not yet supported by Fortify
 		//
 		host := chi.URLParam(r, "cmd")
 		cmd := exec.Command("ping", "-c", "4", host)
