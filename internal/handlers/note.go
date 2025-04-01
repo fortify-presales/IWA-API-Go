@@ -13,7 +13,19 @@ type NoteHandler struct {
 	Repository model.Repository // interface for persistence
 }
 
-// Post handles HTTP Post - /api/v1/notes
+// Post handles HTTP Post
+//
+// @Summary      Create Note
+// @Description  Create a new Note
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param		 Note	body		model.Note			true	"Note"
+// @Success      200  {object}  model.Note
+// @Failure      400  {object}  model.APIError
+// @Failure      404  {object}  model.APIError
+// @Failure      500  {object}  model.APIError
+// @Router       /notes/ [post]
 func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 	var note model.Note
 	// Decode the incoming note json
@@ -35,7 +47,18 @@ func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// GetAll handles HTTP Get - /api/v1/notes
+// GetAll handles HTTP Get with no Id
+//
+// @Summary      Get Notes
+// @Description  Get all Notes
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Success      200  {array}  	model.Note
+// @Failure      400  {object}  model.APIError
+// @Failure      404  {object}  model.APIError
+// @Failure      500  {object}  model.APIError
+// @Router       /notes [get]
 func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	// Get all
 	if notes, err := h.Repository.GetAll(); err != nil {
@@ -57,7 +80,19 @@ func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Get handles HTTP Get - /api/v1/notes/{id}
+// Get handles HTTP Get with Id
+//
+// @Summary      Get Note
+// @Description  Get a Note
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param		 id	path		string				true	"Note ID"
+// @Success      200  {object}  model.Note
+// @Failure      400  {object}  model.APIError
+// @Failure      404  {object}  model.APIError	"Could not find Note Id"
+// @Failure      500  {object}  model.APIError
+// @Router       /notes/{id} [get]
 func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")
@@ -80,7 +115,20 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Put handles HTTP Put - /api/v1/notes/{id}
+// Put handles HTTP Put with Id
+//
+// @Summary      Update Note
+// @Description  Update an existing Note
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param		 id		path	string				true	"Note ID"
+// @Param		 Note	body	model.Note			true	"Note"
+// @Success      200  {object}  model.Note
+// @Failure      400  {object}  model.APIError
+// @Failure      404  {object}  model.APIError	"Could not find Note Id"
+// @Failure      500  {object}  model.APIError
+// @Router       /notes/{id} [put]
 func (h *NoteHandler) Put(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")
@@ -99,7 +147,19 @@ func (h *NoteHandler) Put(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Delete handles HTTP Delete - /api/v1/notes/{id}
+// Delete handles HTTP Delete with Id
+//
+// @Summary      Delete Note
+// @Description  Delete a Note
+// @Tags         notes
+// @Accept       json
+// @Produce      json
+// @Param		 id		path	string				true	"Note ID"
+// @Success      200  {object}  model.APIMessage
+// @Failure      400  {object}  model.APIError
+// @Failure      404  {object}  model.APIError	"Could not find Note Id"
+// @Failure      500  {object}  model.APIError
+// @Router       /notes/{id} [delete]
 func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")

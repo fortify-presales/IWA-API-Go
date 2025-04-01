@@ -20,6 +20,19 @@ type Note struct {
 	CreatedOn   time.Time `json:"createdon,omitempty"`
 }
 
+// APIError
+type APIMessage struct {
+	Message string
+	//CreatedAt    time.Time
+}
+
+// APIError
+type APIError struct {
+	ErrorCode    int
+	ErrorMessage string
+	//CreatedAt    time.Time
+}
+
 // CRUD interface
 type Repository interface {
 	Populate()
