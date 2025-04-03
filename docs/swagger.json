@@ -3,15 +3,15 @@
     "info": {
         "description": "This is an insecure Go REST API for use in OpenText Application Security demonstrations.",
         "title": "Insecure Go REST API",
-        "termsOfService": "http://swagger.io/terms/",
+        "termsOfService": "https://github.com/fortify-presales/insecure-go-api",
         "contact": {
             "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
+            "url": "https://github.com/fortify-presales/insecure-go-api",
+            "email": "do-not-reply@opentext.com"
         },
         "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "name": "GPL-3.0",
+            "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"
         },
         "version": "1.0"
     },
@@ -31,13 +31,22 @@
                     "notes"
                 ],
                 "summary": "Get Notes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "alphadex",
+                        "description": "search by keywords",
+                        "name": "keywords",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Note"
+                                "$ref": "#/definitions/note.Note"
                             }
                         }
                     },
@@ -82,7 +91,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Note"
+                            "$ref": "#/definitions/note.Note"
                         }
                     }
                 ],
@@ -90,7 +99,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Note"
+                            "$ref": "#/definitions/note.Note"
                         }
                     },
                     "400": {
@@ -140,7 +149,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Note"
+                            "$ref": "#/definitions/note.Note"
                         }
                     },
                     "400": {
@@ -189,7 +198,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Note"
+                            "$ref": "#/definitions/note.Note"
                         }
                     }
                 ],
@@ -197,7 +206,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Note"
+                            "$ref": "#/definitions/note.Note"
                         }
                     },
                     "400": {
@@ -290,7 +299,7 @@
                 }
             }
         },
-        "model.Note": {
+        "note.Note": {
             "type": "object",
             "properties": {
                 "createdon": {
@@ -307,5 +316,9 @@
                 }
             }
         }
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://swagger.io/resources/open-api/"
     }
 }

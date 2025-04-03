@@ -10,10 +10,10 @@ import (
 
 // NoteHandler organizes HTTP handler functions for CRUD on Note entity
 type NoteHandler struct {
-	Repository model.Repository // interface for persistence
+	Repository Repository // interface for persistence
 }
 
-func MakeHTTPHandler(repo model.Repository) http.Handler {
+func MakeHTTPHandler(repo Repository) http.Handler {
 
 	// Iniitialize handlers
 	noteHandler := &NoteHandler{
@@ -37,14 +37,14 @@ func MakeHTTPHandler(repo model.Repository) http.Handler {
 // @Tags         notes
 // @Accept       json
 // @Produce      json
-// @Param		 Note	body		model.Note			true	"Note"
-// @Success      200  {object}  model.Note
+// @Param		 Note	body		Note			true	"Note"
+// @Success      200  {object}  Note
 // @Failure      400  {object}  model.APIError
 // @Failure      404  {object}  model.APIError
 // @Failure      500  {object}  model.APIError
 // @Router       /notes/ [post]
 func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
-	var note model.Note
+	var note Note
 	// Decode the incoming note json
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
@@ -54,7 +54,7 @@ func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 	// Create note
 	if _, err := h.Repository.Create(note); err != nil {
-		if errors.Is(err, model.ErrNoteExists) {
+		if errors.Is(err, ErrNoteExists) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -71,14 +71,16 @@ func (h *NoteHandler) Post(w http.ResponseWriter, r *http.Request) {
 // @Tags         notes
 // @Accept       json
 // @Produce      json
-// @Success      200  {array}  	model.Note
+// @Param        keywords    query     string  false  "search by keywords"  example(alphadex)
+// @Success      200  {array}  	Note
 // @Failure      400  {object}  model.APIError
 // @Failure      404  {object}  model.APIError
 // @Failure      500  {object}  model.APIError
 // @Router       /notes [get]
 func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	keywords := r.URL.Query().Get("keywords")
 	// Get all
-	if notes, err := h.Repository.GetAll(); err != nil {
+	if notes, err := h.Repository.GetAll(keywords); err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -105,7 +107,7 @@ func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param		 id	path		string				true	"Note ID"
-// @Success      200  {object}  model.Note
+// @Success      200  {object}  Note
 // @Failure      400  {object}  model.APIError
 // @Failure      404  {object}  model.APIError	"Could not find Note Id"
 // @Failure      500  {object}  model.APIError
@@ -140,8 +142,8 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 // @Accept       json
 // @Produce      json
 // @Param		 id		path	string				true	"Note ID"
-// @Param		 Note	body	model.Note			true	"Note"
-// @Success      200  {object}  model.Note
+// @Param		 Note	body	Note			true	"Note"
+// @Success      200  {object}  Note
 // @Failure      400  {object}  model.APIError
 // @Failure      404  {object}  model.APIError	"Could not find Note Id"
 // @Failure      500  {object}  model.APIError
@@ -149,7 +151,7 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *NoteHandler) Put(w http.ResponseWriter, r *http.Request) {
 	// Getting route parameter id
 	id := r.PathValue("id")
-	var note model.Note
+	var note Note
 	// Decode the incoming note json
 	err := json.NewDecoder(r.Body).Decode(&note)
 	if err != nil {
@@ -187,4 +189,3 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
-
