@@ -277,6 +277,140 @@
                     }
                 }
             }
+        },
+        "/site/download/{id}": {
+            "get": {
+                "description": "Download a file by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "site"
+                ],
+                "summary": "Download File",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"12345\"",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "string",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    }
+                }
+            }
+        },
+        "/site/ping": {
+            "get": {
+                "description": "Ping a Site using URL query parameter",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "site"
+                ],
+                "summary": "Ping Site by Query",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"localhost\"",
+                        "description": "hostname",
+                        "name": "hostname",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "string",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Ping a Site using JSON Body\nJSON Body should contain a \"hostname\" field\nExample: {\"hostname\": \"localhost\"}\nThis is a JSON Injection vulnerability example",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "site"
+                ],
+                "summary": "Ping Site by Body",
+                "parameters": [
+                    {
+                        "description": "Site",
+                        "name": "Site",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/site.Site"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "string",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.APIError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -312,6 +446,14 @@
                     "type": "string"
                 },
                 "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "site.Site": {
+            "type": "object",
+            "properties": {
+                "hostname": {
                     "type": "string"
                 }
             }

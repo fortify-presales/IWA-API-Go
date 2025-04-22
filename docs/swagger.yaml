@@ -23,6 +23,11 @@ definitions:
       title:
         type: string
     type: object
+  site.Site:
+    properties:
+      hostname:
+        type: string
+    type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
@@ -213,4 +218,97 @@ paths:
       summary: Update Note
       tags:
       - notes
+  /site/download/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Download a file by ID
+      parameters:
+      - description: id
+        example: '"12345"'
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: string
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.APIError'
+      summary: Download File
+      tags:
+      - site
+  /site/ping:
+    get:
+      consumes:
+      - application/json
+      description: Ping a Site using URL query parameter
+      parameters:
+      - description: hostname
+        example: '"localhost"'
+        in: query
+        name: hostname
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: string
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.APIError'
+      summary: Ping Site by Query
+      tags:
+      - site
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Ping a Site using JSON Body
+        JSON Body should contain a "hostname" field
+        Example: {"hostname": "localhost"}
+        This is a JSON Injection vulnerability example
+      parameters:
+      - description: Site
+        in: body
+        name: Site
+        required: true
+        schema:
+          $ref: '#/definitions/site.Site'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: string
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.APIError'
+      summary: Ping Site by Body
+      tags:
+      - site
 swagger: "2.0"

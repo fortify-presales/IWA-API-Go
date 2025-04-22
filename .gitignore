@@ -29,3 +29,4 @@ gomod.debricked.lock
 Makefile
 .gitignore
 server
+command_log.json
