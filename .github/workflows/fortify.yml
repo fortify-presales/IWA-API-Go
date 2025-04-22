@@ -31,7 +31,7 @@ on:
 
 # Global environment variables
 env:
-  DEFAULT_APP_NAME: "Insecure-API-Go"
+  DEFAULT_APP_NAME: "IWA-API-Go"
   GO_VERSION: 1.23.0
 
 jobs:
@@ -45,7 +45,12 @@ jobs:
       with:
         go-version: ${{ env.GO_VERSION }}
     - name: Build
-      run: make build
+      run: |
+        make build
+      env:
+        CGO_ENABLED: 1
+        GOOS: linux
+        GOARCH: amd64
     #- name: Test
     #  run: make test
 
